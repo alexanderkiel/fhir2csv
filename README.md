@@ -17,7 +17,7 @@ While exploring solutions which don't require an R installation and work with JS
 The jq filters, I like to show here, convert one FHIR resource into one line of CSV data. If you clone this repository, you can run the following, assuming you have jq installed:
 
 ```sh
-cat blood-pressure-observation.json | jq -f blood-pressure.jq
+cat blood-pressure-observation.json | jq -rf blood-pressure.jq
 ```
 
 The output should be:
@@ -87,15 +87,15 @@ Here the basic shape is:
 [ <column-filter-0>, ..., <column-filter-n> ] | @csv
 ```
 
-where `[]` is an [array construction][5] for the CSV row and the `@csv` [syntax][6] actually outputs that array in CSV format. The [pipe][7] `|` operator combines that two filters. Within the array a separate filter for each column is used. 
+where `[]` is an [array construction][5] for the CSV row and the `@csv` [syntax][6] actually outputs that array in CSV format. The [pipe][7] `|` operator combines that two filters. Within the array, a separate filter for each column is used. 
 
-The most simple filter used for the OID (object identifier) is:
+The most simple filter used for the OID (object identifier) is,
 
 ```
 (.id) // null
 ```
 
-where we select the Observation id property using the [object identifier filter][8] `.id`. We have to put that filter inside parentheses in order to allow the next filter to access the resources root again. The [alternative operator][9] (`//`) followed by `null` is used to ensure that the column isn't omitted if there is no id property in the resource. You will find the pattern `(<real-filter>) // null` in all column filters so I will not repeat it.
+where we select the Observation id property using the [object identifier filter][8] `.id`. We have to put that filter inside parentheses in order to allow the next filter to access the resources root again. The [alternative operator][9] (`//`) followed by `null` is used to ensure that the column isn't omitted if there is no id property in the resource. You will find the pattern `(<real-filter>) // null` in all column filters, so I will not repeat it.
 
 The next more advanced filter used for the PID (patient identifier) is:
 
@@ -113,7 +113,7 @@ The last example of an filter used for DIA (diastolic blood pressure) is:
   | .valueQuantity.value
 ```
 
-Here we first descent into the component complex type with can have multiple values. That's the reason we use [array/object value iterator][12] (`.component[]?`) which will output each value individually and doesn't error on missing component complex type. After that we continue with the [select function][13] with will select the Observation component based on the following FHIR structure:
+Here we first descent into the component complex type which can have multiple values. That's the reason we use [array/object value iterator][12] (`.component[]?`) which will output each value individually and doesn't error on a missing component complex type. After that we continue with the [select function][13] with will select the Observation component based on the following FHIR structure:
 
 ```json
 {
@@ -129,7 +129,7 @@ Here we first descent into the component complex type with can have multiple val
 }
 ```
 
-Here `.code.coding[]?` descents into the Coding followed by `[.system, .code`] which extract the system and code into an array. The array is than compared to the `["http://loinc.org", "8462-4"]` array.
+Here `.code.coding[]?` descents into the Coding followed by `[.system, .code`] which extract the system and code into an array. The array is then compared to the `["http://loinc.org", "8462-4"]` array.
 
 After the appropriate Observation component is selected, the filter `.valueQuantity.value` extracts its quantity value.
 
@@ -137,7 +137,7 @@ After the appropriate Observation component is selected, the filter `.valueQuant
 
 I have show that it's possible to extract tabular data in CSV format from a stream of FHIR resources of one type using the widely available command line tool jq. Streams of FHIR resources can be generated from FHIR bundles using jq itself or be obtained by FHIR Bulk Data Access.
 
-A one-shot FHIR search to CSV solution is currently not possible with my solution because FHIR search uses paging with one FHIR bundle per page. An additional tool would be necessary with follows the page links obtaining bundle after bundle and outputting a stream of FHIR resources. It's possible to build such functionality into [blazectl][14]. With that a one-shot solution export of resources of a single type directly into a CSV file would look like this:
+A one-shot FHIR search to CSV solution is currently not possible with my solution, because FHIR search uses paging with one FHIR bundle per page. An additional tool would be necessary, which follows the page links obtaining bundle after bundle and outputting a stream of FHIR resources. It's possible to build such functionality into [blazectl][14]. With that a one-shot solution export of resources of a single type directly into a CSV file would look like this:
 
 ```sh
 blazectl --server https://hapi.fhir.org/baseR4 search --type Observation --query 'code=http://loinc.org|85354-9' | jq -rf blood-pressure.jq > blood-pressure.csv
